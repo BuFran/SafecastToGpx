@@ -13,19 +13,25 @@ namespace SafecastToGpx
         {
             if (Parameters.Length != 15)
                 throw new IndexOutOfRangeException();
+        }
 
-            GetInt(1);
-            DateTime.Parse(GetStr(2));
-            GetInt(3);
-            GetInt(4);
-            GetInt(5);
-            GetStr(6);
-            GetGpsLatLon(7);
-            GetGpsLatLon(9);
-            GetDbl(11);
-            GetStr(12);
-            GetDbl(13);
-            GetStr(14);
+        public static new SafecastRow Parse(string line)
+        {
+            NMEAMessage msg = NMEAMessage.Parse(line);
+
+            if (msg == null)
+                return null;
+
+            switch (msg.GetStr(0))
+            {
+                default:
+                    return null;
+
+                case "BNRDD":   // bGeigie nano
+                case "BMRDD":   // bGeigie Mini
+                case "BNXRDD":  // bGeigie NX
+                    return new SafecastRow(msg);
+            }
         }
 
         public int DeviceId { get { return GetInt(1); }  }

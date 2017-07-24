@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("SafecastToGpx")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Safecast To GPX file converter")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Microsoft")]
+[assembly: AssemblyCompany("GPL v3")]
 [assembly: AssemblyProduct("SafecastToGpx")]
-[assembly: AssemblyCopyright("Copyright © Microsoft 2017")]
+[assembly: AssemblyCopyright("Copyright © Frantisek Burian <BuFran _at_ seznam.cz>")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

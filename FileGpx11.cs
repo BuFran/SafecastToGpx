@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Xml;
 using System.Xml.Serialization;
@@ -30,6 +31,16 @@ namespace Files.Gpx11
             this.Version = "1.1";
             this.Creator = creator;
             Tracks = tracks;
+        }
+
+        public void SerializeToXml(string fileName)
+        {
+            XmlSerializer serializer = new XmlSerializer(this.GetType());
+            using (MemoryStream ms = new MemoryStream())
+            {
+                serializer.Serialize(ms, this);
+                File.WriteAllText(fileName, System.Text.Encoding.UTF8.GetString(ms.ToArray()));
+            }
         }
 
         [XmlElement("metadata")]  public Metadata Metadata;
