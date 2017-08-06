@@ -42,7 +42,7 @@ namespace SafecastToGpx
             var Tracks = Segments.Select((x, i) => new Track($"Track{i}", new[] { x }));
 
 
-            if (CfgSplitFiles || (!CfgSplitFiles && !CfgSplitNothing && !CfgSplitSegments && CfgSplitTracks))
+            if (CfgSplitFiles || (!CfgSplitFiles && !CfgSplitNothing && !CfgSplitSegments && !CfgSplitTracks))
             {
                 foreach (var seg in Tracks)
                     new FileGpx11("Safecast To GPX Extractor", seg)
