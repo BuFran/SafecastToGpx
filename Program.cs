@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 
@@ -25,6 +26,7 @@ namespace SafecastToGpx
 
         static string CfgFileMask = null;
 
+        static TimeSpan CfgTimeShift = new TimeSpan(0, 0, 0);
 
         public static void ConvertFile(string filename)
         {
@@ -37,7 +39,7 @@ namespace SafecastToGpx
 
             var Segments = db.AllTracks.Select(
                x => new TrackSegment(x.Select(
-                   z => new Waypoint(z.GpsLatitude, z.GpsLongitude, z.GpsAltitude, z.GpsTimeStamp)))).ToArray();
+                   z => new Waypoint(z.GpsLatitude, z.GpsLongitude, z.GpsAltitude, z.GpsTimeStamp + CfgTimeShift)))).ToArray();
 
             var Tracks = Segments.Select((x, i) => new Track($"Track{i}", new[] { x }));
 
@@ -85,6 +87,38 @@ namespace SafecastToGpx
             return bool.Parse(getArg(e, def.ToString(), advance));
         }
 
+        static Regex time = new Regex(@"([+-]?)(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?", RegexOptions.Compiled);
+        static Dictionary<string, TimeSpan> KnownShifts = new Dictionary<string, TimeSpan>
+        {
+            ["UTC"] = new TimeSpan(0, 0, 0),
+            ["GMT"] = new TimeSpan(0, 0, 0),
+            ["CET"] = new TimeSpan(1, 0, 0),
+            ["CEST"] = new TimeSpan(2, 0, 0),
+        };
+        // TODO: Add important time zones from table https://en.wikipedia.org/wiki/List_of_time_zone_abbreviations
+        static TimeSpan getTimeArg(IEnumerator<string> e, string def,bool advance = false)
+        {
+            string s = getArg(e, def, advance);
+
+            if (KnownShifts.ContainsKey(s))
+                return KnownShifts[s];
+
+            var m = time.Match(s);
+
+            if (!m.Success)
+                throw new Exception($"This can't be treated as time: '{s}'\r\n try --help for usage");
+
+            var sgn = m.Groups[1].Success ? m.Groups[1].Value : "+";
+            var hh = m.Groups[2].Success ? int.Parse(m.Groups[2].Value) : 0;
+            var mm = m.Groups[3].Success ? int.Parse(m.Groups[3].Value) : 0;
+            var ss = m.Groups[4].Success ? int.Parse(m.Groups[4].Value) : 0;
+
+            if (sgn == "+")
+                return new TimeSpan(hh, mm, ss);
+            else
+                return TimeSpan.Zero - new TimeSpan(hh, mm, ss);
+        }
+
         private static Dictionary<string, Action<IEnumerator<string>>> Commands = new Dictionary<string, Action<IEnumerator<string>>>()
         {
             ["--help"] = a => CfgHelp = true,
@@ -95,6 +129,7 @@ namespace SafecastToGpx
             ["--split-nothing"] = a => CfgSplitNothing = getBoolArg(a, true),
             ["--silent"] = a => CfgSilent = true,
             ["--multithreaded"] = a => CfgMultithreaded = getBoolArg(a, true),
+            ["--timeshift"] = a => CfgTimeShift = getTimeArg(a, "00:00"),
         };
 
         private static string SVersion = "1.0.deadbeef";
@@ -124,6 +159,10 @@ OPTIONS:
 
   --multithreaded[=true]: (default)
       work with multiple threads in parallell
+
+  --timeshift=[+-]HH:MM[:SS]
+  --timeshift=CET
+      shift UTC datetime to local time. Time zone abbreviations allowed. 
 ";
 
         static void Main(string[] args)
