@@ -20,6 +20,7 @@ namespace SafecastToGpx
 
         static bool CfgSilent = false;
         static bool CfgMultithreaded = true;
+        static bool CfgSetFileTime =true;
 
         static bool CfgHelp = false;
         static bool CfgVersion = false;
@@ -27,6 +28,20 @@ namespace SafecastToGpx
         static string CfgFileMask = null;
 
         static TimeSpan CfgTimeShift = new TimeSpan(0, 0, 0);
+
+        private static void ToGpx(string filename, params Track[] tracks)
+        {
+            new FileGpx11("Safecast To GPX Extractor", tracks).SerializeToXml(filename);
+            if (CfgSetFileTime)
+            {
+                DateTime dt = tracks[0].Segments[0].Points[0].time;
+                File.SetCreationTimeUtc(filename, dt);
+                File.SetLastAccessTimeUtc(filename, dt);
+                File.SetLastWriteTimeUtc(filename, dt);
+            }
+
+            Console.WriteLine($"- File '{filename}' written.");
+        }
 
         public static void ConvertFile(string filename)
         {
@@ -47,25 +62,18 @@ namespace SafecastToGpx
             if (CfgSplitFiles || (!CfgSplitFiles && !CfgSplitNothing && !CfgSplitSegments && !CfgSplitTracks))
             {
                 foreach (var seg in Tracks)
-                    new FileGpx11("Safecast To GPX Extractor", seg)
-                        .SerializeToXml(Path.ChangeExtension(filename, $".{seg.name}.gpx"));
+                    ToGpx(Path.ChangeExtension(filename, $".{seg.name}.gpx"), seg);
             }
 
             string of = Path.ChangeExtension(filename, $".gpx");
             if (CfgSplitTracks)
-            {
-                new FileGpx11("Safecast To GPX Extractor", Tracks).SerializeToXml(of);
-            }
+                ToGpx(of, Tracks.ToArray());
 
             if (CfgSplitSegments)
-            {
-                new FileGpx11("Safecast To GPX Extractor", new Track($"Track1", Segments)).SerializeToXml(of);
-            }
+                ToGpx(of, new Track($"Track1", Segments));
 
             if (CfgSplitNothing)
-            {
-                new FileGpx11("Safecast To GPX Extractor", new Track($"Track_cat", Segments.SelectMany(x=> x.Points).ToArray())).SerializeToXml(of);
-            }
+                ToGpx(of, new Track($"Track_cat", Segments.SelectMany(x => x.Points).ToArray()));
 
             if (!CfgSilent)
                 Console.WriteLine($"File '{filename}' processed. Found {Segments.Count()} segments");
@@ -130,6 +138,8 @@ namespace SafecastToGpx
             ["--silent"] = a => CfgSilent = true,
             ["--multithreaded"] = a => CfgMultithreaded = getBoolArg(a, true),
             ["--timeshift"] = a => CfgTimeShift = getTimeArg(a, "00:00"),
+            ["--setfiletime"] = a => CfgSetFileTime = getBoolArg(a, true),
+
         };
 
         private static string SVersion = "1.0.deadbeef";
@@ -163,6 +173,9 @@ OPTIONS:
   --timeshift=[+-]HH:MM[:SS]
   --timeshift=CET
       shift UTC datetime to local time. Time zone abbreviations allowed. 
+
+  --setfiletime[=true]
+      set the generated file creation time to time of begin of track
 ";
 
         static void Main(string[] args)
