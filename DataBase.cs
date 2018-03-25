@@ -11,7 +11,7 @@ namespace SafecastToGpx
     public class DataBase
     {
         public string FileName;
-        public List<DataBaseItem> Items = new List<DataBaseItem>();
+        private List<DataBaseItem> Items = new List<DataBaseItem>();
 
         public DataBase(string filename)
         {
@@ -58,21 +58,39 @@ namespace SafecastToGpx
                     catch { }
                 }
             }
+
+            OptimizeRemoveInvalidGps();
+            OptimizeRemoveShortTracks();
         }
 
-        public IEnumerable<IGrouping<int,DataBaseItem>> AllTracks
+        public IEnumerable<IGrouping<int, DataBaseItem>> AllTracks => Items.GroupBy(x => x.RunCount);
+        
+
+
+        public IEnumerable<DataBaseItem> TrackGet(int idx)
         {
-            get
-            {
-                foreach (var grp in Items.Where(x => x.GpsValid).GroupBy(x => x.RunCount))
-                {
-                    if (grp.Count() < 2)
-                        continue;
-
-                    yield return grp;
-                }
-            }
+            return Items.Where(x => x.RunCount == idx);
         }
+
+
+        #region Private optimizations ....
+        private void OptimizeRemoveInvalidGps()
+        {
+            Items.RemoveAll(x => !x.GpsValid);
+        }
+
+        private void OptimizeRemoveShortTracks()
+        {
+            var a = Items
+                .GroupBy(x => x.RunCount)
+                .Where(x => x.Count() < 2)
+                .Select(x => x.Key)
+                .ToArray();
+
+            if (a.Length > 0)
+                Items.RemoveAll(x => a.Contains(x.RunCount));
+        }
+        #endregion
     }
 
     public class DataBaseItem
