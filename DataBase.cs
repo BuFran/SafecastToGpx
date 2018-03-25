@@ -10,10 +10,12 @@ namespace SafecastToGpx
 {
     public class DataBase
     {
+        public string FileName;
         public List<DataBaseItem> Items = new List<DataBaseItem>();
 
         public DataBase(string filename)
         {
+            FileName = filename;
             int logcnt = 0;
             using (var sr = new StreamReader(filename))
             {

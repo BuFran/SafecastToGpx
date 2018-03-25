@@ -1,6 +1,7 @@
 ﻿using Files.Gpx11;
 using Ltr.MultiProtocol.Nmea;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -43,15 +44,16 @@ namespace SafecastToGpx
             Console.WriteLine($"- File '{filename}' written.");
         }
 
-        public static void ConvertFile(string filename)
+        static DataBase AnalyseFile(string filename)
         {
             if (!CfgSilent)
                 Console.WriteLine($"Analysing file '{filename}'... ");
 
-            DataBase db = new DataBase(filename);
+            return new DataBase(filename);
+        }
 
-            // todo run some analysis over the file
-
+        public static void ConvertFile(DataBase db)
+        {
             var Segments = db.AllTracks.Select(
                x => new TrackSegment(x.Select(
                    z => new Waypoint(z.GpsLatitude, z.GpsLongitude, z.GpsAltitude, z.GpsTimeStamp + CfgTimeShift)))).ToArray();
@@ -62,10 +64,10 @@ namespace SafecastToGpx
             if (CfgSplitFiles || (!CfgSplitFiles && !CfgSplitNothing && !CfgSplitSegments && !CfgSplitTracks))
             {
                 foreach (var seg in Tracks)
-                    ToGpx(Path.ChangeExtension(filename, $".{seg.name}.gpx"), seg);
+                    ToGpx(Path.ChangeExtension(db.FileName, $".{seg.name}.gpx"), seg);
             }
 
-            string of = Path.ChangeExtension(filename, $".gpx");
+            string of = Path.ChangeExtension(db.FileName, $".gpx");
             if (CfgSplitTracks)
                 ToGpx(of, Tracks.ToArray());
 
@@ -76,7 +78,7 @@ namespace SafecastToGpx
                 ToGpx(of, new Track($"Track_cat", Segments.SelectMany(x => x.Points).ToArray()));
 
             if (!CfgSilent)
-                Console.WriteLine($"File '{filename}' processed. Found {Segments.Count()} segments");
+                Console.WriteLine($"File '{db.FileName}' processed. Found {Segments.Count()} segments");
         }
 
         static string getArg(IEnumerator<string> e, string def, bool advance=false)
@@ -222,11 +224,32 @@ OPTIONS:
 
             var files = Directory.EnumerateFiles("./", CfgFileMask);
 
+            var dbs = new ConcurrentBag<DataBase>();
+
             if (CfgMultithreaded)
-                Parallel.ForEach(files, ConvertFile);
+                Parallel.ForEach(files, s => dbs.Add(AnalyseFile(s)));
             else
                 foreach (var log in files)
+                    dbs.Add(AnalyseFile(log));
+
+            // todo run some analysis over the file(s)
+#if FALSE
+            if (CfgJoinOverDate)
+            {
+            // search all date's over set
+            // make new db's with dayname's sets
+            //reorganize db
+            // store result
+            }
+#endif
+
+            if (CfgMultithreaded)
+                Parallel.ForEach(dbs, ConvertFile);
+            else
+                foreach (var log in dbs)
                     ConvertFile(log);            
         }
+
+        
     }
 }
